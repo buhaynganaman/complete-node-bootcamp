@@ -2,24 +2,9 @@ const fs = require("fs");
 const http = require("http");
 const url = require("url");
 
+const replaceTemplate = require("./final/modules/replaceTemplate");
+
 ////////////////////// DAY 3, 4 - SERVER ////////////////////////////////
-
-function replaceElement(temp, product) {
-  let output = temp.replace(/{%PRODUCTNAME%}/g, product.productName);
-  output = output.replace(/{%IMAGE%}/g, product.image);
-  output = output.replace(/{%PRICE%}/g, product.price);
-  output = output.replace(/{%FROM%}/g, product.from);
-  output = output.replace(/{%NUTRIENTS%}/g, product.nutrients);
-  output = output.replace(/{%QUANTITY%}/g, product.quantity);
-  output = output.replace(/{%DESCRIPTION%}/g, product.description);
-  output = output.replace(/{%ID%}/g, product.id);
-
-  if (!product.organic) {
-    output = output.replace(/{%NOT_ORGANIC%}/g, "not-organic");
-  }
-
-  return output;
-}
 
 const tempOverview = fs.readFileSync(
   `${__dirname}/final/templates/template-overview.html`,
@@ -38,25 +23,34 @@ const dataObj = JSON.parse(data);
 
 // Ansynchronous Block
 const server = http.createServer((req, res) => {
-  const pathName = req.url;
+  const { query, pathname } = url.parse(req.url, true);
 
   // Overview Page
-  if (pathName === "/" || pathName === "/overview") {
+  if (pathname === "/" || pathname === "/overview") {
     res.writeHead(200, {
       "Content-type": "text/html",
     });
 
-    const cardHTML = dataObj.map((el) => replaceElement(tempCard, el)).join("");
+    const cardHTML = dataObj
+      .map((el) => replaceTemplate(tempCard, el))
+      .join("");
 
     const output = tempOverview.replace("{%PRODUCT_CARDS%}", cardHTML);
     res.end(output);
 
     // Product Page
-  } else if (pathName === "/product") {
-    res.end("This is the product");
+  } else if (pathname === "/product") {
+    res.writeHead(200, {
+      "Content-type": "text/html",
+    });
+    const product = dataObj[query.id];
+
+    const output = replaceTemplate(tempProduct, product);
+
+    res.end(output);
 
     // API
-  } else if (pathName === "/API") {
+  } else if (pathname === "/API") {
     res.writeHead(200, {
       "Content-type": "application/json",
       "yawa-text": "yawa",
